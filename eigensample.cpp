@@ -16,6 +16,18 @@ using namespace std;
 using namespace Eigen;
 namespace plt = matplotlibcpp;
 
+
+float N(vector<float> knots,int idx,int degree,float u){	
+	if(degree==0){
+		if(u>=knots[idx]&& u<knots[idx+1]) return 1;
+		else if(u==1 && idx == knots.size()-1) return 1;
+		else return 0;
+	}
+	else{
+		return (u-knots[idx])/(knots[idx+degree]-knots[idx])*N(knots,idx,degree-1,u)+(knots[idx+degree+1]-u)/(knots[idx+degree+1]-knots[idx+1])*N(knots,idx+1,degree-1,u);
+	}
+}
+
 MatrixXf computephi(int complexity, string model, vector<float> inp,float space =0.01, vector<float> test={0,0}){
 	MatrixXf phi(inp.size(),complexity);
 	if(model.compare("exp")==0){
@@ -51,6 +63,38 @@ MatrixXf computephi(int complexity, string model, vector<float> inp,float space 
 				else{
 					phi(i,j)=cos(0.4*M_PI*inp[i]*j);
 				}			
+			}
+		}
+	}
+	else if(model.compare("spline")==0){
+		phi.resize(inp.size(),2*complexity);
+		float block_size=1.0/complexity;
+		for(int i=0;i<inp.size();i++){
+			for(int j=0;j<complexity;j++){
+				if(inp[i]>(block_size*(j))&&inp[i]<=(block_size*(j+1))){
+					phi(i,2*j)=1;
+					phi(i,2*j+1)=inp[i];
+				}
+				else{
+					phi(i,2*j)=0;
+					phi(i,2*j+1)=0;
+				}			
+			}
+		}
+	}
+	else if(model.compare("bspline")==0){
+		float block_size=1.0/complexity;
+		for(int i=0;i<inp.size();i++){
+			for(int j=0;j<complexity;j++){
+					phi(i,j) = N(test,j,2,inp[i]);
+			}
+		}
+	}
+	else if(model.compare("wavelet")==0){
+		for(int i=0;i<inp.size();i++){
+			phi(i,0) = 1;
+			for(int j=1;j<complexity;j++){
+			phi(i,j) = abs(0.9*(sin((2*M_PI/3)*(-6.2*inp[i]-test[i]+0.75))+(4/3)*(-6.2*inp[i]-test[i]+0.75)*cos((4*M_PI/3)*(-6.2*inp[i]-test[i]+0.75)))/(M_PI*(-6.2*inp[i]-test[i]+0.75)-((16*M_PI)/9)*(pow((-6.2*inp[i]-test[i]+0.75),3))));
 			}
 		}
 	}
@@ -121,10 +165,18 @@ int main()
 	for(int i=0;i<inp.size();i++){
 		if(i%10==0) cntrs.push_back(inp[i]);
 	}
+	vector<float>knots;
+	for(float i=0.0;i<=1.0;i+=0.02){
+		knots.push_back(i);
+	}
+	cout << knots.size()<<endl;
 	float space=0.02;
 	// MatrixXf phi = computephi(cntrs.size(),"sigmoid",traininp,cntrs,space);
 	// MatrixXf phi = computephi(10,"poly",traininp);
-	MatrixXf phi = computephi(50,"fourier",traininp);
+	// MatrixXf phi = computephi(50,"fourier",traininp);
+	// MatrixXf phi = computephi(50,"spline",traininp);
+	MatrixXf phi = computephi(49,"bspline",traininp,0.01,knots);
+	// MatrixXf phi = computephi(cntrs.size(),"wavelet",traininp,j,cntrs);
 	VectorXf y(trainout.size());
 	for(int i=0;i<trainout.size();i++){
 		y(i) = trainout[i];
@@ -137,9 +189,15 @@ int main()
 	// MatrixXf phi_test = computephi(10,"poly",testinp);
 	// MatrixXf phi_train = computephi(10,"poly",traininp);
 	// MatrixXf phi_model = computephi(10,"poly",inp);
-	MatrixXf phi_test = computephi(50,"fourier",testinp);
-	MatrixXf phi_train = computephi(50,"fourier",traininp);
-	MatrixXf phi_model = computephi(50,"fourier",inp);
+	// MatrixXf phi_test = computephi(50,"spline",testinp);
+	// MatrixXf phi_train = computephi(50,"spline",traininp);
+	// MatrixXf phi_model = computephi(50,"spline",inp);
+	MatrixXf phi_test = computephi(49,"bspline",testinp,0.01,knots);
+	MatrixXf phi_train = computephi(49,"bspline",traininp,0.01,knots);
+	MatrixXf phi_model = computephi(49,"bspline",inp,0.01,knots);
+	// MatrixXf phi_test = computephi(cntrs.size(),"wavelet",testinp,j,cntrs);
+	// MatrixXf phi_train = computephi(cntrs.size(),"wavelet",traininp,j,cntrs);
+	// MatrixXf phi_model = computephi(cntrs.size(),"wavelet",inp,j,cntrs);
 	VectorXf model_out_test = phi_test*weights;
 	VectorXf model_out_train = phi_train*weights;
 	VectorXf model_out = phi_model*weights;
@@ -171,6 +229,7 @@ int main()
 	}
 	model_loss/=500;
 	cout << " Training Loss: " << train_loss <<  " Test Loss: " << test_loss << " Model Loss: " << model_loss << endl;
+
 	plt::plot(inp,out);
 	plt::plot(inp,finalval,"r--");
 	plt::show();
