@@ -239,7 +239,7 @@ int main()
 	}
 
 	cout << " Polynomial  Model Loss: " << poly_loss << endl;
-	cout << " Exponential  Model Loss: " << exp_loss << endl;
+	cout << " Gaussian  Model Loss: " << exp_loss << endl;
 	cout << " Sigmoidal  Model Loss: " << sigmoid_loss << endl;
 	cout << " Fourier  Model Loss: " << fourier_loss << endl;
 	cout << " Spline  Model Loss: " << spline_loss << endl;
@@ -248,7 +248,7 @@ int main()
 
 	plt::named_plot("Data",inp,out);
 	plt::named_plot("Polynomial Model", inp, polyval);
-	plt::named_plot("Exponential Model", inp, expval);
+	plt::named_plot("Gaussian Model", inp, expval);
 	plt::named_plot("Sigmoidal Model", inp, sigmoidval);
 	plt::named_plot("Fourier Model", inp, fourierval);
 	plt::named_plot("Spline Model", inp, splineval);
